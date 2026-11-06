@@ -1,0 +1,92 @@
+// COMP0178 auction system — final ER diagram source
+// Role assumption: every User is a Buyer, a Seller, or both. Roles may overlap.
+// DBML does not enforce that every User appears in at least one role table.
+
+Table User {
+  userID integer [primary key, increment]
+  email varchar(255) [not null, unique]
+  firstName varchar(100) [not null]
+  lastName varchar(100) [not null]
+  passwordHash varchar(255) [not null]
+  createdAt timestamp [not null]
+}
+
+Table Buyer {
+  userID integer [primary key]
+}
+
+Table Seller {
+  userID integer [primary key]
+}
+
+Table Category {
+  categoryID integer [primary key, increment]
+  name varchar(100) [not null, unique]
+  description text
+}
+
+Table Auction {
+  auctionID integer [primary key, increment]
+  sellerID integer [not null]
+  categoryID integer [not null]
+  title varchar(200) [not null]
+  description text [not null]
+  itemCondition varchar(100)
+  startingPrice decimal(10, 2) [not null]
+  reservePrice decimal(10, 2)
+  bidIncrement decimal(10, 2) [not null]
+  startsAt timestamp [not null]
+  endsAt timestamp [not null]
+  status varchar(30) [not null]
+}
+
+Table Bid {
+  bidID integer [primary key, increment]
+  auctionID integer [not null]
+  buyerID integer [not null]
+  amount decimal(10, 2) [not null]
+  placedAt timestamp [not null]
+
+  indexes {
+    (auctionID, bidID) [unique]
+  }
+}
+
+Table WatchlistEntry {
+  buyerID integer [not null]
+  auctionID integer [not null]
+  watchedAt timestamp [not null]
+
+  indexes {
+    (buyerID, auctionID) [pk]
+  }
+}
+
+Table SaleOrder {
+  orderID integer [primary key, increment]
+  auctionID integer [not null, unique]
+  winningBidID integer [not null, unique]
+  status varchar(30) [not null]
+  createdAt timestamp [not null]
+
+  Note: 'Only sold auctions have a SaleOrder. Its winning Bid must belong to that same Auction.'
+}
+
+Note project_scope {
+  'A category may have zero auctions. Payment processing is outside the project scope. A User must have a Buyer role, a Seller role, or both; DBML cannot enforce this total role constraint.'
+}
+
+Ref has_buyer_role: User.userID - Buyer.userID
+Ref has_seller_role: User.userID - Seller.userID
+
+Ref places: Buyer.userID < Bid.buyerID
+Ref receives: Auction.auctionID < Bid.auctionID
+
+Ref watches: Buyer.userID < WatchlistEntry.buyerID
+Ref watched: Auction.auctionID < WatchlistEntry.auctionID
+
+Ref creates: Seller.userID < Auction.sellerID
+Ref category: Category.categoryID < Auction.categoryID
+
+Ref sold_as: Auction.auctionID - SaleOrder.auctionID
+Ref winning_bid: SaleOrder.(auctionID, winningBidID) > Bid.(auctionID, bidID)
