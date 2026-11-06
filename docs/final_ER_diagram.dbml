@@ -12,11 +12,15 @@ Table User {
 }
 
 Table Buyer {
-  userID integer [primary key]
+  userID integer [primary key, note: 'Buyer subtype of User. A User may have zero or one Buyer row; every Buyer row belongs to exactly one User.']
+
+  Note: 'Role cardinality: each User has 0..1 Buyer rows. Together with Seller, every User must have at least one role; enforce that rule in application logic or with an additional database constraint.'
 }
 
 Table Seller {
-  userID integer [primary key]
+  userID integer [primary key, note: 'Seller subtype of User. A User may have zero or one Seller row; every Seller row belongs to exactly one User.']
+
+  Note: 'Role cardinality: each User has 0..1 Seller rows. Together with Buyer, every User must have at least one role; enforce that rule in application logic or with an additional database constraint.'
 }
 
 Table Category {
@@ -38,6 +42,8 @@ Table Auction {
   startsAt timestamp [not null]
   endsAt timestamp [not null]
   status varchar(30) [not null]
+
+  Note: 'Sale cardinality: an Auction may have 0..1 SaleOrder. Each SaleOrder belongs to exactly one Auction.'
 }
 
 Table Bid {
@@ -46,6 +52,8 @@ Table Bid {
   buyerID integer [not null]
   amount decimal(10, 2) [not null]
   placedAt timestamp [not null]
+
+  Note: 'Winner cardinality: a Bid may be selected by 0..1 SaleOrders. Each SaleOrder has exactly one winning Bid from its own Auction.'
 
   indexes {
     (auctionID, bidID) [unique]
@@ -69,24 +77,40 @@ Table SaleOrder {
   status varchar(30) [not null]
   createdAt timestamp [not null]
 
-  Note: 'Only sold auctions have a SaleOrder. Its winning Bid must belong to that same Auction.'
+  Note: 'Only sold auctions have a SaleOrder. Each SaleOrder belongs to one Auction and has one winning Bid from that same Auction. A Bid can win at most one SaleOrder.'
 }
 
 Note project_scope {
-  'A category may have zero auctions. Payment processing is outside the project scope. A User must have a Buyer role, a Seller role, or both; DBML cannot enforce this total role constraint.'
+  'A category may have zero auctions. Payment processing is outside the project scope.'
 }
 
-Ref has_buyer_role: User.userID - Buyer.userID
-Ref has_seller_role: User.userID - Seller.userID
+// Relationship key: <? means one to zero-or-many; -? means one to zero-or-one.
+// Many-to-many relationships are represented through their bridge tables below.
+Note relationship_guide {
+  'Every User has at least one role: Buyer, Seller, or both. Each individual role is optional (0..1); the at-least-one-role rule needs application or database enforcement. Buyers may have zero Bids or WatchlistEntries. Sellers and Categories may have zero Auctions. Auctions may have zero Bids or WatchlistEntries. WatchlistEntry represents many-to-many watching; Bid records many-to-many bidding, allowing repeated bids by the same Buyer on an Auction. Each Auction has 0..1 SaleOrder, and each Bid can win 0..1 SaleOrder. Each SaleOrder requires one Auction and one winning Bid from that same Auction.'
+}
 
-Ref places: Buyer.userID < Bid.buyerID
-Ref receives: Auction.auctionID < Bid.auctionID
+// Each Buyer/Seller row belongs to exactly one User; a User may lack either individual role.
+// The separate rule that every User has at least one role still needs additional enforcement.
+Ref has_buyer_role: User.userID -? Buyer.userID
+Ref has_seller_role: User.userID -? Seller.userID
 
-Ref watches: Buyer.userID < WatchlistEntry.buyerID
-Ref watched: Auction.auctionID < WatchlistEntry.auctionID
+// One Buyer places zero or many bids; each Bid is from exactly one Buyer.
+Ref places: Buyer.userID <? Bid.buyerID
+// One Auction receives zero or many bids; each Bid belongs to exactly one Auction.
+Ref receives: Auction.auctionID <? Bid.auctionID
 
-Ref creates: Seller.userID < Auction.sellerID
-Ref category: Category.categoryID < Auction.categoryID
+// Many-to-many: Buyers watch Auctions through WatchlistEntry, which stores watchedAt.
+Ref watches: Buyer.userID <? WatchlistEntry.buyerID
+Ref watched: Auction.auctionID <? WatchlistEntry.auctionID
 
-Ref sold_as: Auction.auctionID - SaleOrder.auctionID
-Ref winning_bid: SaleOrder.(auctionID, winningBidID) > Bid.(auctionID, bidID)
+// One Seller creates zero or many Auctions; each Auction has exactly one Seller.
+Ref creates: Seller.userID <? Auction.sellerID
+// One Category contains zero or many Auctions; each Auction has exactly one Category.
+Ref category: Category.categoryID <? Auction.categoryID
+
+// Each SaleOrder belongs to exactly one Auction; an Auction may have no SaleOrder or one SaleOrder.
+Ref sold_as: Auction.auctionID -? SaleOrder.auctionID
+// Each SaleOrder selects exactly one Bid from its own Auction; a Bid may win no SaleOrder or one.
+// The second side is the SaleOrder FK; the composite reference enforces that the Bid belongs to that Auction.
+Ref winning_bid: Bid.(auctionID, bidID) -? SaleOrder.(auctionID, winningBidID)
