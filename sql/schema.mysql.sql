@@ -41,3 +41,23 @@ CREATE TABLE Auction (
  INDEX auctions_end (status, endsAt),
  INDEX auctions_category (categoryID, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE Bid (
+ bidID INTEGER AUTO_INCREMENT PRIMARY KEY,
+ auctionID INTEGER NOT NULL,
+ buyerID INTEGER NOT NULL,
+ amount DECIMAL(10,2) NOT NULL CHECK (amount > 0),
+ placedAt TIMESTAMP NOT NULL,
+ FOREIGN KEY (auctionID) REFERENCES Auction(auctionID),
+ FOREIGN KEY (buyerID) REFERENCES Buyer(userID),
+ UNIQUE KEY bid_identity_auction (auctionID, bidID),
+ UNIQUE KEY bid_amount_per_auction (auctionID, amount),
+ INDEX bids_buyer (buyerID, auctionID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE WatchlistEntry (
+ buyerID INTEGER NOT NULL,
+ auctionID INTEGER NOT NULL,
+ watchedAt TIMESTAMP NOT NULL,
+ PRIMARY KEY (buyerID, auctionID),
+ FOREIGN KEY (buyerID) REFERENCES Buyer(userID),
+ FOREIGN KEY (auctionID) REFERENCES Auction(auctionID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
