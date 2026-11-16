@@ -16,3 +16,28 @@ CREATE TABLE Seller (
  userID INTEGER PRIMARY KEY,
  FOREIGN KEY (userID) REFERENCES `User`(userID)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE Category (
+ categoryID INTEGER AUTO_INCREMENT PRIMARY KEY,
+ name VARCHAR(100) NOT NULL UNIQUE,
+ description TEXT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE Auction (
+ auctionID INTEGER AUTO_INCREMENT PRIMARY KEY,
+ sellerID INTEGER NOT NULL,
+ categoryID INTEGER NOT NULL,
+ title VARCHAR(200) NOT NULL,
+ description TEXT NOT NULL,
+ itemCondition VARCHAR(100),
+ startingPrice DECIMAL(10,2) NOT NULL CHECK (startingPrice > 0),
+ reservePrice DECIMAL(10,2),
+ bidIncrement DECIMAL(10,2) NOT NULL CHECK (bidIncrement > 0),
+ startsAt TIMESTAMP NOT NULL,
+ endsAt TIMESTAMP NOT NULL,
+ status VARCHAR(30) NOT NULL DEFAULT 'open' CHECK (status IN ('open','sold','unsold','cancelled')),
+ FOREIGN KEY (sellerID) REFERENCES Seller(userID),
+ FOREIGN KEY (categoryID) REFERENCES Category(categoryID),
+ CHECK (reservePrice IS NULL OR reservePrice >= startingPrice),
+ CHECK (endsAt > startsAt),
+ INDEX auctions_end (status, endsAt),
+ INDEX auctions_category (categoryID, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
