@@ -70,3 +70,29 @@ CREATE TABLE SaleOrder (
  FOREIGN KEY (auctionID) REFERENCES Auction(auctionID),
  FOREIGN KEY (auctionID, winningBidID) REFERENCES Bid(auctionID, bidID)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- adding notifications and queued emails outside the eight core tables
+CREATE TABLE notifications (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ user_id INTEGER NOT NULL,
+ auction_id INTEGER,
+ kind VARCHAR(30) NOT NULL,
+ message TEXT NOT NULL,
+ read_at DATETIME,
+ created_at DATETIME NOT NULL,
+ FOREIGN KEY (user_id) REFERENCES `User`(userID),
+ FOREIGN KEY (auction_id) REFERENCES Auction(auctionID),
+ INDEX notifications_user (user_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE email_outbox (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ notification_id BIGINT UNSIGNED NOT NULL UNIQUE,
+ recipient VARCHAR(255) NOT NULL,
+ subject VARCHAR(200) NOT NULL,
+ body TEXT NOT NULL,
+ status VARCHAR(12) NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','sent')),
+ attempts INT NOT NULL DEFAULT 0,
+ created_at DATETIME NOT NULL,
+ sent_at DATETIME,
+ FOREIGN KEY (notification_id) REFERENCES notifications(id),
+ INDEX outbox_status (status, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
