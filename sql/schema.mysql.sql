@@ -61,3 +61,12 @@ CREATE TABLE WatchlistEntry (
  FOREIGN KEY (buyerID) REFERENCES Buyer(userID),
  FOREIGN KEY (auctionID) REFERENCES Auction(auctionID)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE SaleOrder (
+ orderID INTEGER AUTO_INCREMENT PRIMARY KEY,
+ auctionID INTEGER NOT NULL UNIQUE,
+ winningBidID INTEGER NOT NULL UNIQUE,
+ status VARCHAR(30) NOT NULL DEFAULT 'awaiting_payment' CHECK (status IN ('awaiting_payment','completed')),
+ createdAt TIMESTAMP NOT NULL,
+ FOREIGN KEY (auctionID) REFERENCES Auction(auctionID),
+ FOREIGN KEY (auctionID, winningBidID) REFERENCES Bid(auctionID, bidID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
